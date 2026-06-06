@@ -40,6 +40,8 @@ class TelegramIncomingMessage:
     is_forum: bool | None = None
     voice: TelegramVoice | None = None
     document: TelegramDocument | None = None
+    forum_topic_created_name: str | None = None
+    forum_topic_edited_name: str | None = None
     raw: dict[str, Any] | None = None
 
     @property
