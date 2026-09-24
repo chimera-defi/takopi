@@ -8,6 +8,8 @@ from takopi.telegram.api_models import (
     CallbackQueryMessage,
     Chat,
     Document,
+    ForumTopicCreated,
+    ForumTopicEdited,
     Message,
     MessageReply,
     PhotoSize,
@@ -80,6 +82,44 @@ def test_parse_incoming_update_filters_non_text_and_non_voice() -> None:
     )
 
     assert parse_incoming_update(update, chat_id=123) is None
+
+
+def test_parse_incoming_update_forum_topic_created_service_message() -> None:
+    update = Update(
+        update_id=1,
+        message=Message(
+            message_id=10,
+            message_thread_id=77,
+            is_topic_message=True,
+            chat=Chat(id=-100, type="supergroup", is_forum=True),
+            forum_topic_created=ForumTopicCreated(name="kimi_delegate @main"),
+        ),
+    )
+
+    msg = parse_incoming_update(update, chat_id=-100)
+    assert isinstance(msg, TelegramIncomingMessage)
+    assert msg.text == ""
+    assert msg.thread_id == 77
+    assert msg.forum_topic_created_name == "kimi_delegate @main"
+
+
+def test_parse_incoming_update_forum_topic_edited_service_message() -> None:
+    update = Update(
+        update_id=1,
+        message=Message(
+            message_id=10,
+            message_thread_id=77,
+            is_topic_message=True,
+            chat=Chat(id=-100, type="supergroup", is_forum=True),
+            forum_topic_edited=ForumTopicEdited(name="Kimi delegate skill"),
+        ),
+    )
+
+    msg = parse_incoming_update(update, chat_id=-100)
+    assert isinstance(msg, TelegramIncomingMessage)
+    assert msg.text == ""
+    assert msg.thread_id == 77
+    assert msg.forum_topic_edited_name == "Kimi delegate skill"
 
 
 def test_parse_incoming_update_voice_message() -> None:

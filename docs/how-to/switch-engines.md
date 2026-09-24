@@ -11,6 +11,8 @@ Prefix the first non-empty line with an engine directive:
 /claude shrink and store artifacts forever
 /opencode hide their paper until they reply
 /pi render a diorama of this timeline
+/devin_delegate review this branch
+/kd find the narrowest failing test
 ```
 
 Directives are only parsed at the start of the first non-empty line.
@@ -34,7 +36,8 @@ Selection precedence (highest to lowest): resume token → `/<engine-id>` direct
 ## Engine installation
 
 Takopi shells out to engine CLIs. Install them and make sure they’re on your `PATH`
-(`codex`, `claude`, `opencode`, `pi`). Authentication is handled by each CLI.
+(`codex`, `claude`, `opencode`, `pi`, `devin-delegate`, `kimi-delegate`).
+Authentication is handled by each CLI.
 
 ## Related
 

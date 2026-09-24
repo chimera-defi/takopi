@@ -86,8 +86,22 @@ def _parse_incoming_message(
             document_payload = _document_from_photo(best)
     if document_payload is None and file_command and msg.sticker is not None:
         document_payload = _document_from_sticker(msg.sticker)
+    forum_topic_created_name = (
+        msg.forum_topic_created.name if msg.forum_topic_created is not None else None
+    )
+    forum_topic_edited_name = (
+        msg.forum_topic_edited.name if msg.forum_topic_edited is not None else None
+    )
+    has_topic_event = (
+        forum_topic_created_name is not None or forum_topic_edited_name is not None
+    )
     has_text = raw_text is not None or caption is not None
-    if not has_text and voice_payload is None and document_payload is None:
+    if (
+        not has_text
+        and voice_payload is None
+        and document_payload is None
+        and not has_topic_event
+    ):
         return None
     msg_chat_id = msg.chat.id
     chat_type = msg.chat.type
@@ -127,6 +141,8 @@ def _parse_incoming_message(
         is_forum=is_forum,
         voice=voice_payload,
         document=document_payload,
+        forum_topic_created_name=forum_topic_created_name,
+        forum_topic_edited_name=forum_topic_edited_name,
         raw=msgspec.to_builtins(msg),
     )
 

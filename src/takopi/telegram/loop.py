@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from functools import partial
+import re
 from typing import TYPE_CHECKING, cast
 
 import anyio
@@ -76,6 +77,43 @@ logger = get_logger(__name__)
 __all__ = ["poll_updates", "run_main_loop", "send_with_resume"]
 
 ForwardKey = tuple[int, int, int]
+
+_TOPIC_TITLE_SUFFIXES = ("_skill", "_repo", "_project", "_topic", "_channel")
+
+
+def _normalize_topic_title_token(value: str) -> str:
+    return re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", value.lower())).strip("_")
+
+
+def _forum_topic_title_context(
+    runtime,
+    title: str | None,
+) -> RunContext | None:
+    if title is None:
+        return None
+    raw = title.strip()
+    if not raw:
+        return None
+    branch = "main"
+    base = raw
+    branch_match = re.search(r"\s@([^\s]+)\s*$", raw)
+    if branch_match is not None:
+        branch = branch_match.group(1).strip() or "main"
+        base = raw[: branch_match.start()].strip()
+    normalized = _normalize_topic_title_token(base)
+    candidates = {normalized}
+    for suffix in _TOPIC_TITLE_SUFFIXES:
+        if normalized.endswith(suffix):
+            candidates.add(normalized[: -len(suffix)].strip("_"))
+    for alias in runtime.project_aliases():
+        project_key = runtime.normalize_project_key(alias)
+        if project_key is None:
+            continue
+        alias_token = _normalize_topic_title_token(alias)
+        if alias_token in candidates:
+            return RunContext(project=project_key, branch=branch)
+    return None
+
 
 _handle_file_put_default = handle_file_put_default
 
@@ -1580,6 +1618,30 @@ async def run_main_loop(
                 stateful_mode = ctx.stateful_mode
                 chat_project = ctx.chat_project
                 ambient_context = ctx.ambient_context
+
+                topic_event_name = (
+                    msg.forum_topic_edited_name or msg.forum_topic_created_name
+                )
+                if topic_event_name is not None:
+                    if state.topic_store is not None and topic_key is not None:
+                        inferred_context = _forum_topic_title_context(
+                            cfg.runtime, topic_event_name
+                        )
+                        if inferred_context is not None:
+                            await state.topic_store.set_context(
+                                *topic_key,
+                                inferred_context,
+                                topic_title=topic_event_name,
+                            )
+                            logger.info(
+                                "topics.auto_bound_from_title",
+                                chat_id=topic_key[0],
+                                thread_id=topic_key[1],
+                                topic_title=topic_event_name,
+                                project=inferred_context.project,
+                                branch=inferred_context.branch,
+                            )
+                    return
 
                 if is_cancel_command(text):
                     tg.start_soon(
